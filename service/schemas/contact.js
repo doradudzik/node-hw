@@ -5,15 +5,19 @@ const contact = new Schema(
   {
     name: {
       type: String,
-      required: [true, "Set name for contact"],
+      required: [true, "Name field is required"],
+      match: [/^[a-zA-Z]{3,30}$/, "Name must contain only letters."],
       minLength: 3,
       maxLength: 30,
-      match: [/^[a-zA-Z]{3,30}$/, "Name must contain only letters."],
       trim: true,
     },
     email: {
       type: String,
       trim: true,
+      match: [
+        /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+        "Enter a valid e-mail address",
+      ],
     },
     phone: {
       type: String,
@@ -21,6 +25,7 @@ const contact = new Schema(
       maxLength: 16,
       match: [/^\d{3,16}$/, "Phone must contain only numbers."],
       trim: true,
+      required: [true, "Phone field is required"],
     },
     favorite: {
       type: Boolean,
