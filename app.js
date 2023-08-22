@@ -3,7 +3,9 @@ const logger = require("morgan");
 const cors = require("cors");
 
 const contactsRouter = require("./routes/api/contacts");
-
+const usersRouter = require("./routes/api/users");
+const mongoose = require("mongoose");
+mongoose.Promise = global.Promise;
 const app = express();
 
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
@@ -12,6 +14,9 @@ app.use(logger(formatsLogger));
 app.use(cors());
 app.use(express.json());
 
+require("./config/config-passport");
+
+app.use("/api/users", usersRouter);
 app.use("/api/contacts", contactsRouter);
 
 app.use((req, res) => {

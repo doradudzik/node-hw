@@ -1,24 +1,24 @@
 const Contact = require("../service/schemas/contact");
 
-const getAllContacts = async () => {
+const getAllContacts = async (userId) => {
   try {
-    return await Contact.find();
+    return await Contact.find({ owner: userId });
   } catch (err) {
     console.log(err.message);
   }
 };
 
-const getContactById = async (contactId) => {
+const getContactById = async (userId, contactId) => {
   try {
-    return await Contact.findById(contactId);
+    return await Contact.findById({ owner: userId, _id: contactId });
   } catch (err) {
     console.log(err.message);
   }
 };
 
-const removeContact = async (contactId) => {
+const removeContact = async (userId, contactId) => {
   try {
-    return await Contact.findByIdAndRemove(contactId);
+    return await Contact.findByIdAndRemove({ owner: userId, _id: contactId });
   } catch (err) {
     console.log(err.message);
   }
@@ -32,9 +32,21 @@ const createContact = async (body) => {
   }
 };
 
-const updateContact = async (contactId, body) => {
+const updateContact = async (userId, contactId, body) => {
   try {
-    return await Contact.findByIdAndUpdate(contactId, body, { new: true });
+    return await Contact.findByIdAndUpdate(
+      { owner: userId, _id: contactId },
+      body,
+      { new: true }
+    );
+  } catch (err) {
+    console.log(err.message);
+  }
+};
+
+const getFavorites = async (userId, contactId, favorite) => {
+  try {
+    return Contact.find({ owner: userId, _id: contactId }, favorite);
   } catch (err) {
     console.log(err.message);
   }
@@ -46,4 +58,5 @@ module.exports = {
   removeContact,
   createContact,
   updateContact,
+  getFavorites,
 };
