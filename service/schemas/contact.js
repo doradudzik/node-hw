@@ -3,6 +3,11 @@ const Schema = mongoose.Schema;
 
 const contact = new Schema(
   {
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+    },
     name: {
       type: String,
       required: [true, "Name field is required"],
