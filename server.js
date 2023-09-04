@@ -1,5 +1,6 @@
 const app = require("./app");
 const mongoose = require("mongoose");
+const { uploadFolders } = require("./routes/api/uploadAvatar");
 
 require("dotenv").config();
 
@@ -14,7 +15,8 @@ const connection = mongoose.connect(uriDb, {
 
 connection
   .then(() => {
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
+      await uploadFolders();
       console.log("Database connection successful");
     });
   })
