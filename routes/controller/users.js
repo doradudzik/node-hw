@@ -1,5 +1,11 @@
 const service = require("../../service/users");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const path = require("path");
+const fs = require("fs").promises;
+const { storeAvatars } = require("../api/uploadAvatar");
+const Jimp = require("jimp");
+const nanoid = require("nanoid");
 
 // const { registerSchema } = require("../../utils/validation.js");
 
@@ -22,8 +28,12 @@ const create = async (req, res) => {
         message: "Email in use",
       });
     }
-
-    const user = await service.createUser(body);
+    const avatarURL = gravatar.url(email, { s: "200", r: "pg", d: "mp" }, true);
+    const user = await service.createUser({
+      ...body,
+      avatarURL: avatarURL,
+      publicId: nanoid(),
+    });
     user.setPassword(password);
     await user.save();
 
@@ -34,6 +44,7 @@ const create = async (req, res) => {
         newUser: {
           email: user.email,
           subscription: user.subscription,
+          avatarURL: user.avatarURL,
         },
       },
     });
@@ -198,10 +209,68 @@ const changeSubscription = async (req, res, next) => {
   }
 };
 
+const updateAvatar = async (req, res, next) => {
+  try {
+    const { _id, publicId } = req.user;
+    if (!req.file) {
+      return res.json({
+        status: "error",
+        code: 400,
+        data: "Bad request",
+        message: "We couldn't find any images",
+      });
+    }
+    const { path: tempPath, originalname } = req.file;
+
+    const uniqueFileName = `${publicId}-${originalname}`;
+    const avatarFilePath = path.join(storeAvatars, uniqueFileName);
+
+    Jimp.read(`${tempPath}`, (err, avatar) => {
+      if (err) throw err;
+      avatar.resize(250, 250).write(avatarFilePath);
+    });
+    await fs.rm(tempPath);
+
+    const avatarURL = path.join(
+      `http://localhost:${process.env.PORT}`,
+      "/avatars",
+      uniqueFileName
+    );
+
+    await service.updateUser({ _id }, { avatarURL: avatarURL });
+    res.json({
+      status: "success",
+      code: 200,
+      data: {
+        updatedAvatar: {
+          message: "Plik załadowany",
+          avatarURL: avatarURL,
+        },
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    if (error.name === "ValidationError") {
+      const validationErrors = {};
+
+      for (const key in error.errors) {
+        validationErrors[key] = error.errors[key].message;
+      }
+
+      return res.status(400).json({
+        status: 400,
+        message: "Validation failed",
+        errors: validationErrors,
+      });
+    }
+  }
+};
+
 module.exports = {
   create,
   login,
   logout,
   current,
   changeSubscription,
+  updateAvatar,
 };

@@ -25,6 +25,14 @@ const user = new Schema(
       minLength: [6, "Password must contain at least 6 characters"],
       trim: true,
     },
+    avatarURL: {
+      type: String,
+      required: [true, "Avatar is required"],
+    },
+    publicId: {
+      type: String,
+      required: true,
+    },
     subscription: {
       type: String,
       enum: {
