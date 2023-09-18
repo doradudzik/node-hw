@@ -6,6 +6,8 @@ const fs = require("fs").promises;
 const { storeAvatars } = require("../api/uploadAvatar");
 const Jimp = require("jimp");
 const nanoid = require("nanoid");
+const { v4: uuidv4 } = require("uuid");
+const sendEmail = require("../../sendEmail/sendEmail");
 
 // const { registerSchema } = require("../../utils/validation.js");
 
@@ -33,9 +35,14 @@ const create = async (req, res) => {
       ...body,
       avatarURL: avatarURL,
       publicId: nanoid(),
+      verificationToken: uuidv4(),
     });
     user.setPassword(password);
     await user.save();
+
+    const verificationToken = user.verificationToken;
+    console.log(verificationToken);
+    sendEmail(email, `${verificationToken}`);
 
     res.json({
       status: "success",
@@ -83,7 +90,14 @@ const login = async (req, res, next) => {
         message: "Email or password is wrong",
       });
     }
-
+    if (userByEmail.verify === false) {
+      return res.json({
+        status: "error",
+        code: 400,
+        data: "Bad request",
+        message: "Email is not verified",
+      });
+    }
     const payload = {
       id: userByEmail.id,
     };
@@ -266,6 +280,91 @@ const updateAvatar = async (req, res, next) => {
   }
 };
 
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { verificationToken } = req.params;
+
+    const user = await service.updateUser(
+      { verificationToken },
+      {
+        verify: true,
+        verificationToken: null,
+      }
+    );
+
+    if (!user) {
+      return res.status(401).json({
+        status: "error",
+        code: 404,
+        message: "User not found",
+      });
+    }
+    res.json({
+      status: "success",
+      code: 200,
+      data: {
+        user: {
+          message: "Verification successful",
+          email: user.email,
+          verify: user.verify,
+        },
+      },
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const reVerifyEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await service.getUser({ email });
+
+    if (!email) {
+      return res.status(401).json({
+        status: "error",
+        code: 400,
+        data: "Bad request",
+        message: "Missing required field email",
+      });
+    }
+    if (user.verify === true) {
+      return res.status(401).json({
+        status: "error",
+        code: 400,
+        message: "Verification has already been passed",
+      });
+    }
+    const verificationToken = user.verificationToken;
+    console.log(verificationToken);
+    sendEmail(email, `${verificationToken}`);
+
+    res.json({
+      status: "success",
+      code: 200,
+      data: {
+        message: "Verification email sent",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    if (error.name === "ValidationError") {
+      const validationErrors = {};
+
+      for (const key in error.errors) {
+        validationErrors[key] = error.errors[key].message;
+      }
+
+      return res.status(400).json({
+        status: 400,
+        message: "Validation failed",
+        errors: validationErrors,
+      });
+    }
+  }
+};
+
 module.exports = {
   create,
   login,
@@ -273,4 +372,6 @@ module.exports = {
   current,
   changeSubscription,
   updateAvatar,
+  verifyEmail,
+  reVerifyEmail,
 };
